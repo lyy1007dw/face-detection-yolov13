@@ -29,8 +29,49 @@ algorithm/
 
 ## 环境准备
 
+### 1. 克隆项目
+
 ```bash
-# 安装依赖
+git clone https://github.com/lyy1007dw/face-detection-yolov13.git
+cd face-detection-yolov13
+```
+
+### 2. 下载数据集
+
+本项目使用 [WiderFace](http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/) 数据集，需要自行下载并配置：
+
+1. **下载图片数据**：
+   - [训练集](http://shuoyang1213.me/WIDERFACE/train.html)
+   - [验证集](http://shuoyang1213.me/WIDERFACE/val.html)
+   - [测试集](http://shuoyang1213.me/WIDERFACE/test.html)
+
+2. **下载标注文件**：
+   - [ground truth](http://shuoyang1213.me/WIDERFACE/support/bbx_annotation_v1.zip)
+
+3. **下载评估所需文件**（用于官方评估）：
+   - `wider_face_val.mat`
+   - `wider_easy_val.mat`
+   - `wider_medium_val.mat`
+   - `wider_hard_val.mat`
+
+4. **配置目录结构**：
+   ```
+   dataset/
+   ├── wider_train/
+   │   ├── images/     # 放置训练图片
+   │   └── labels/    # 放置训练标注（YOLO格式）
+   ├── wider_val/
+   │   ├── images/    # 放置验证图片
+   │   └── labels/    # 放置验证标注
+   └── wider_test/
+       └── images/    # 放置测试图片
+   ```
+
+5. **标注转换**：如果标注是VOC格式，需要转换为YOLO格式（每行：`class_id x_center y_center width height`，坐标归一化到0-1）
+
+### 3. 安装依赖
+
+```bash
 cd yolov13
 pip install -r requirements.txt
 

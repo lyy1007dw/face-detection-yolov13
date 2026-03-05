@@ -1,0 +1,11 @@
+# WiderFace 人脸检测数据集配置
+path: ./dataset
+
+train: wider_train/images
+val: wider_val/images
+test: wider_test/images
+
+nc: 1
+
+names:
+  0: face

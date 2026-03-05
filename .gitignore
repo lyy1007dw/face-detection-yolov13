@@ -1,0 +1,32 @@
+# 数据集（需要自行下载配置）
+dataset/
+
+# 训练输出
+runs/
+yolov13/runs/
+
+# 预测结果
+yolov13/widerface_evaluate/predictions/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 模型权重（可保留预训练权重）
+*.pt
+
+# 其他
+.DS_Store
+Thumbs.db
