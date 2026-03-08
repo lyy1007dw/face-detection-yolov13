@@ -1,9 +1,9 @@
 # WiderFace 人脸检测数据集配置
-path: ./dataset
+path: E:/biyesheji/algorithm/dataset
 
-train: wider_train/images
-val: wider_val/images
-test: wider_test/images
+train: wider_train
+val: wider_val
+test: wider_test
 
 nc: 1
 

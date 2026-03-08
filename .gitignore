@@ -30,3 +30,4 @@ build/
 # 其他
 .DS_Store
 Thumbs.db
+/yolov13/widerface_evaluate/pred_txt/

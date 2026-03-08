@@ -1,61 +1,99 @@
+import gc
+import torch
 from ultralytics import YOLO
+import os
 
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+os.environ['OMP_NUM_THREADS'] = '16'
+
+# ==========================
 # 配置参数
-MODEL = 'yolov13n.pt'         # 预训练权重，n/s/m/l/x 选一个
+# ==========================
+MODEL = 'yolov13n.pt'  # nano版本，速度快
 DATA = 'ultralytics/cfg/datasets/wider_face.yaml'  # 数据集配置
-EPOCHS = 300                  #
-BATCH_SIZE = 16               # 批量大小
-IMG_SIZE = 640                # 输入图片大小
-DEVICE = '0'                  # GPU编号，多卡写 '0,1,2,3'
-WORKERS = 8                   # 数据加载线程数
-PROJECT = 'runs/train'        # 训练结果保存目录
-NAME = 'yolov13n_widerface'   # 训练结果保存的文件夹名
-RESUME = False                # 是否从上次中断处继续训练
+EPOCHS = 150  # 训练轮数
+BATCH_SIZE = 16  # batch=16稳定，32会OOM
+IMG_SIZE = 1280  # 人脸检测推荐高分辨率
+DEVICE = '0'
+WORKERS = 8  # 实测workers=8稳定，16可能导致不稳定
+PROJECT = 'runs/train'
+NAME = 'yolov13n_vgpu32g'
+RESUME = True
+FP16 = True  # Ada架构完全支持FP16
+
+# ==========================
+# 数据增强（人脸检测专用）
+# ==========================
+AUGMENT = {
+    'mosaic': 1.0,  # 对小脸检测帮助大
+    'mixup': 0.0,  # 关闭，人脸不适合
+    'copy_paste': 0.0,  # 关闭
+    'fliplr': 0.5,  # 水平翻转
+    'scale': 0.5,  # 缩放
+    'hsv_h': 0.015,  # HSV 色调增强
+    'hsv_s': 0.7,  # HSV 饱和度增强
+    'hsv_v': 0.4,  # HSV 亮度增强
+}
+
+# ==========================
+# 优化器配置
+# ==========================
+OPTIMIZER = {
+    'optimizer': 'SGD',  # 优化器SGD
+    'lr0': 0.01,  # 初始学习率
+    'lrf': 0.01,  # 学习率衰减率
+    'momentum': 0.937,  # 动量
+    'weight_decay': 0.0005,  # 权重衰减
+    'warmup_epochs': 3,  # 预热轮数
+}
 
 
+# ==========================
+# 显存清理 Callback
+# ==========================
+def clear_memory_callback(trainer):
+    """每5个epoch清理一次显存碎片，防止OOM"""
+    if trainer.epoch % 5 == 0:
+        gc.collect()
+        torch.cuda.empty_cache()
+
+
+# ==========================
+# 训练函数
+# ==========================
 def train():
     model = YOLO(MODEL)
+    # 注册显存清理callback
+    model.add_callback('on_train_epoch_end', clear_memory_callback)
+    save_dir = os.path.join(PROJECT, NAME)
+    os.makedirs(save_dir, exist_ok=True)
 
     results = model.train(
-        data=DATA,           # 数据
-        epochs=EPOCHS,       # 训练轮数
-        batch=BATCH_SIZE,    # 批量大小
-        imgsz=IMG_SIZE,      # 输入图片大小
-        device=DEVICE,       # GPU编号，多卡写 '0,1,2,3'
-        workers=WORKERS,     # 数据加载线程数
-        project=PROJECT,     # 训练结果保存目录
-        name=NAME,           # 训练结果保存的文件夹名
-        resume=RESUME,       # 是否从上次中断处继续训练
-
-        # 优化器
-        optimizer='SGD',     # 优化器
-        lr0=0.01,            # 初始学习率
-        lrf=0.01,            # 学习率衰减率
-        momentum=0.937,      # 动量
-        weight_decay=0.0005,  # 权重衰减
-        warmup_epochs=3,      # 预热轮数
-
-        # 数据增强（人脸检测专用配置）
-        mosaic=1.0,      # 马赛克增强，对小脸有帮助
-        mixup=0.0,       # 关闭，人脸检测不适合
-        copy_paste=0.0,  # 关闭
-        fliplr=0.5,      # 水平翻转
-        scale=0.5,       # 缩放范围
-        hsv_h=0.015,     # HSV hue增强
-        hsv_s=0.7,       # HSV saturation增强
-        hsv_v=0.4,       # HSV value增强
-
-        # 其他
-        save_period=10,  # 每10轮保存一次权重
-        val=True,        # 训练过程中同步跑内置验证（mAP@0.5）
-        plots=True,      # 保存训练曲线图
+        data=DATA,
+        epochs=EPOCHS,
+        batch=BATCH_SIZE,
+        imgsz=IMG_SIZE,
+        device=DEVICE,
+        workers=WORKERS,
+        project=PROJECT,
+        name=NAME,
+        resume=RESUME,
+        half=FP16,
+        save_period=10,
+        val=True,
+        plots=True,
+        patience=50,  # 新增：50轮无提升自动早停，节省时间
+        **AUGMENT,
+        **OPTIMIZER,
     )
 
     best_weights = f'{results.save_dir}/weights/best.pt'
-    print(f'\n训练完成！')
-    print(f'最优权重路径: {best_weights}')
+    print(f'\n训练完成！最优权重路径: {best_weights}')
     return best_weights
 
 
+# ==========================
+# 主函数
+# ==========================
 if __name__ == '__main__':
     train()

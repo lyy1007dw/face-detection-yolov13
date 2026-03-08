@@ -12,7 +12,6 @@ import argparse
 import numpy as np
 from scipy.io import loadmat
 from bbox import bbox_overlaps
-from IPython import embed
 
 
 def get_gt_boxes(gt_dir):
@@ -263,11 +262,23 @@ def evaluation(pred, gt_path, iou_thresh=0.5):
         ap = voc_ap(recall, propose)
         aps.append(ap)
 
-    print("==================== Results ====================")
-    print("Easy   Val AP: {}".format(aps[0]))
-    print("Medium Val AP: {}".format(aps[1]))
-    print("Hard   Val AP: {}".format(aps[2]))
-    print("=================================================")
+    output = "==================== Results ====================\n"
+    output += "Easy   Val AP: {}\n".format(aps[0])
+    output += "Medium Val AP: {}\n".format(aps[1])
+    output += "Hard   Val AP: {}\n".format(aps[2])
+    output += "=================================================\n"
+
+    # 输出到控制台
+    print(output)
+
+    # 保存结果到文件
+    result_dir = os.path.dirname(os.path.abspath(__file__))
+    result_file = os.path.join(result_dir, 'results.txt')
+    with open(result_file, 'w') as f:
+        f.write(output)
+    print(f"结果已保存到: {result_file}")
+
+    return aps
 
 
 if __name__ == '__main__':
