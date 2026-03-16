@@ -164,21 +164,114 @@ def nms_rotated(boxes, scores, threshold=0.45):
     return sorted_idx[pick]
 
 
+def soft_nms(
+        boxes: torch.Tensor,
+        scores: torch.Tensor,
+        sigma: float = 0.5,
+        score_thresh: float = 0.001,
+        iou_thresh: float = 0.3,
+) -> list:
+    """
+    Soft-NMS（高斯惩罚版本）
+
+    核心改进：将与已选框 IoU 超过阈值的候选框的置信度按高斯函数衰减，
+    而不是直接删除。对密集人脸场景（Hard 子集）效果显著。
+
+    数学表达：
+        标准 NMS：  score_i = 0              （若 IoU > iou_thresh）
+        Soft-NMS：  score_i *= exp(-IoU²/σ)  （若 IoU > iou_thresh）
+
+    参考：Bodla et al., "Soft-NMS -- Improving Object Detection With
+          One Line of Code", ICCV 2017
+
+    Args:
+        boxes (Tensor):       [N, 4]，格式 xyxy，float
+        scores (Tensor):      [N]，置信度，float
+        sigma (float):        高斯衰减系数，越大保留框越多（推荐 0.3~0.7）
+        score_thresh (float): 最终输出置信度下限（WiderFace 评估需设极低值）
+        iou_thresh (float):   触发衰减的 IoU 阈值（推荐 0.3，低于标准 NMS 的 0.45）
+
+    Returns:
+        keep (list[int]): 保留框的原始索引列表
+    """
+    device = boxes.device
+    scores = scores.clone().float()
+    N = boxes.shape[0]
+
+    print(f'[soft_nms GPU] boxes={boxes.shape} device={boxes.device}')
+
+    # 记录每个框的原始索引（框被过滤后索引会变，需要追踪原始位置）
+    idxs = torch.arange(N, device=device)
+    keep = []
+
+    while scores.numel() > 0:
+        # ── 串行部分（无法向量化，只有1步）──────────────────────
+        # 取当前最高置信度框
+        m = int(scores.argmax())
+        keep.append(idxs[m].item())
+
+        if scores.numel() == 1:
+            break
+
+        # 当前最高分框的坐标
+        box_m = boxes[m]  # [4]
+
+        # 移除已选框
+        mask = torch.ones(scores.numel(), dtype=torch.bool, device=device)
+        mask[m] = False
+        boxes_rest = boxes[mask]  # [M, 4]
+        scores_rest = scores[mask]  # [M]
+        idxs_rest = idxs[mask]  # [M]
+
+        # ── 向量化部分（全部在 GPU 上并行计算）────────────────────
+        # 一次性计算 box_m 与所有剩余框的 IoU，M 个框同时算
+        x1 = torch.maximum(box_m[0], boxes_rest[:, 0])  # [M]
+        y1 = torch.maximum(box_m[1], boxes_rest[:, 1])  # [M]
+        x2 = torch.minimum(box_m[2], boxes_rest[:, 2])  # [M]
+        y2 = torch.minimum(box_m[3], boxes_rest[:, 3])  # [M]
+
+        inter = (x2 - x1).clamp(0) * (y2 - y1).clamp(0)  # [M] 交集面积
+
+        area_m = (box_m[2] - box_m[0]) * (box_m[3] - box_m[1])  # 标量
+        area_rest = ((boxes_rest[:, 2] - boxes_rest[:, 0]) *
+                     (boxes_rest[:, 3] - boxes_rest[:, 1]))  # [M]
+
+        iou = inter / (area_m + area_rest - inter).clamp(min=1e-6)  # [M]
+
+        # 一次性对所有框计算高斯衰减，M 个框同时算
+        decay = torch.ones_like(scores_rest)  # [M] 初始全1
+        high_iou_mask = iou > iou_thresh  # [M] bool
+        decay[high_iou_mask] = torch.exp(
+            -(iou[high_iou_mask] ** 2) / sigma
+        )  # 只对高IoU框衰减
+        scores_rest = scores_rest * decay  # [M] 同时衰减所有框
+
+        # 过滤低分框（阈值以下的直接丢弃）
+        valid = scores_rest >= score_thresh  # [M] bool
+        boxes = boxes_rest[valid]
+        scores = scores_rest[valid]
+        idxs = idxs_rest[valid]
+
+    return keep
+
+
 def non_max_suppression(
-    prediction,
-    conf_thres=0.25,
-    iou_thres=0.45,
-    classes=None,
-    agnostic=False,
-    multi_label=False,
-    labels=(),
-    max_det=300,
-    nc=0,  # number of classes (optional)
-    max_time_img=0.05,
-    max_nms=30000,
-    max_wh=7680,
-    in_place=True,
-    rotated=False,
+        prediction,
+        conf_thres=0.25,
+        iou_thres=0.45,
+        classes=None,
+        agnostic=False,
+        multi_label=False,
+        labels=(),
+        max_det=300,
+        nc=0,  # number of classes (optional)
+        max_time_img=0.05,
+        max_nms=30000,
+        max_wh=7680,
+        in_place=True,
+        rotated=False,
+        enabel_soft_nms: bool = True,  # ←优化阶段 1 新增
+        soft_nms_sigma: float = 0.5,  # ←优化阶段 1 新增
 ):
     """
     Perform non-maximum suppression (NMS) on a set of boxes, with support for masks and multiple labels per box.
@@ -293,7 +386,25 @@ def non_max_suppression(
             i = nms_rotated(boxes, scores, iou_thres)
         else:
             boxes = x[:, :4] + c  # boxes (offset by class)
-            i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
+            # 只在第一次调用时打印，之后不再重复
+            if not hasattr(non_max_suppression, '_nms_printed'):
+                if enabel_soft_nms:
+                    print('[NMS] Soft-NMS 已启用  sigma=0.5')
+                else:
+                    print('[NMS] Hard NMS 已启用')
+                non_max_suppression._nms_printed = True
+
+            # 阶段 1 优化：支持 Soft-NMS / 标准 NMS 切换
+            if enabel_soft_nms:
+                i = soft_nms(
+                    boxes, scores,
+                    sigma=soft_nms_sigma,
+                    score_thresh=conf_thres,
+                    iou_thresh=iou_thres,
+                )
+                i = torch.tensor(i, device=boxes.device, dtype=torch.long)
+            else:
+                i = torchvision.ops.nms(boxes, scores, iou_thres)
         i = i[:max_det]  # limit detections
 
         # # Experimental
@@ -571,7 +682,7 @@ def xywhr2xyxyxyxy(x):
     )
 
     ctr = x[..., :2]
-    w, h, angle = (x[..., i : i + 1] for i in range(2, 5))
+    w, h, angle = (x[..., i: i + 1] for i in range(2, 5))
     cos_value, sin_value = cos(angle), sin(angle)
     vec1 = [w / 2 * cos_value, w / 2 * sin_value]
     vec2 = [-h / 2 * sin_value, h / 2 * cos_value]
