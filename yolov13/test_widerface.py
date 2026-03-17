@@ -13,11 +13,11 @@ from ultralytics import YOLO
 # ==========================
 # 配置参数
 # ==========================
-WEIGHTS = 'runs/train/yolov13n_vgpu32g2/weights/best.pt'
+WEIGHTS = 'runs/train/yolov13n_base2/weights/best.pt'
 DATASET_FOLDER = '../dataset/wider_val/images/'
-SAVE_FOLDER = 'widerface_evaluate/yolov13n_vgpu32g2/pred_txt/'
+SAVE_FOLDER = 'widerface_evaluate/yolov13n_base/pred_txt/'
 GT_FOLDER = 'widerface_evaluate/ground_truth'
-IMG_SIZE = 1280        # 与训练保持一致
+IMG_SIZE = 640        # 与训练保持一致
 CONF_THRES = 0.001       # 评估时保持低阈值，不要改
 IOU_THRES = 0.5
 DEVICE = '0'
@@ -147,5 +147,5 @@ if __name__ == '__main__':
         print(f'找不到权重文件: {WEIGHTS}')
         print('请确认训练已完成，或修改 WEIGHTS 路径')
     else:
-        # run_inference()
+        run_inference()
         run_evaluation()

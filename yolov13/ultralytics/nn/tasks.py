@@ -152,7 +152,22 @@ class BaseModel(nn.Module):
                 x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
             if profile:
                 self._profile_one_layer(m, x, dt)
+            # --- 仅调试 P2 及之后层 ---
+            if getattr(m, 'i', -1) >= 1024:
+                print(f"\n层 {getattr(m, 'i', 'N/A')}: {m.__class__.__name__}")
+                if isinstance(x, list):
+                    shapes = [xi.shape if xi is not None else None for xi in x]
+                    print(f"  输入 x 是 list，包含 {len(x)} 个 tensor，shape={shapes}")
+                else:
+                    print(f"  输入 x shape: {x.shape}")
+                print(f"  层信息: from={getattr(m, 'f', 'N/A')}")
             x = m(x)  # run
+            if getattr(m, 'i', -1) >= 1024:
+                if isinstance(x, list):
+                    shapes = [xi.shape if hasattr(xi, 'shape') else type(xi) for xi in x]
+                    print(f"  输出 x 是 list，包含 {len(x)} 个元素，shape={shapes}")
+                else:
+                    print(f"  输出 x shape: {x.shape}")
             y.append(x if m.i in self.save else None)  # save output
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
@@ -380,9 +395,9 @@ class DetectionModel(BaseModel):
     def _clip_augmented(self, y):
         """Clip YOLO augmented inference tails."""
         nl = self.model[-1].nl  # number of detection layers (P3-P5)
-        g = sum(4**x for x in range(nl))  # grid points
+        g = sum(4 ** x for x in range(nl))  # grid points
         e = 1  # exclude layer count
-        i = (y[0].shape[-1] // g) * sum(4**x for x in range(e))  # indices
+        i = (y[0].shape[-1] // g) * sum(4 ** x for x in range(e))  # indices
         y[0] = y[0][..., :-i]  # large
         i = (y[-1].shape[-1] // g) * sum(4 ** (nl - 1 - x) for x in range(e))  # indices
         y[-1] = y[-1][..., i:]  # small
@@ -619,7 +634,7 @@ class WorldModel(DetectionModel):
             import clip
 
         if (
-            not getattr(self, "clip_model", None) and cache_clip_model
+                not getattr(self, "clip_model", None) and cache_clip_model
         ):  # for backwards compatibility of models lacking clip_model attribute
             self.clip_model = clip.load("ViT-B/32")[0]
         model = self.clip_model if cache_clip_model else clip.load("ViT-B/32")[0]
@@ -819,16 +834,16 @@ def torch_safe_load(weight, safe_only=False):
     file = attempt_download_asset(weight)  # search online if missing locally
     try:
         with temporary_modules(
-            modules={
-                "ultralytics.yolo.utils": "ultralytics.utils",
-                "ultralytics.yolo.v8": "ultralytics.models.yolo",
-                "ultralytics.yolo.data": "ultralytics.data",
-            },
-            attributes={
-                "ultralytics.nn.modules.block.Silence": "torch.nn.Identity",  # YOLOv9e
-                "ultralytics.nn.tasks.YOLOv10DetectionModel": "ultralytics.nn.tasks.DetectionModel",  # YOLOv10
-                "ultralytics.utils.loss.v10DetectLoss": "ultralytics.utils.loss.E2EDetectLoss",  # YOLOv10
-            },
+                modules={
+                    "ultralytics.yolo.utils": "ultralytics.utils",
+                    "ultralytics.yolo.v8": "ultralytics.models.yolo",
+                    "ultralytics.yolo.data": "ultralytics.data",
+                },
+                attributes={
+                    "ultralytics.nn.modules.block.Silence": "torch.nn.Identity",  # YOLOv9e
+                    "ultralytics.nn.tasks.YOLOv10DetectionModel": "ultralytics.nn.tasks.DetectionModel",  # YOLOv10
+                    "ultralytics.utils.loss.v10DetectLoss": "ultralytics.utils.loss.E2EDetectLoss",  # YOLOv10
+                },
         ):
             if safe_only:
                 # Load via custom pickle module
@@ -1039,7 +1054,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 legacy = False
                 if scale in "lx":
                     args[3] = True
-            if m is A2C2f: 
+            if m is A2C2f:
                 legacy = False
                 if scale in "lx":  # for L/X sizes
                     args.append(True)
@@ -1077,7 +1092,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c1 = ch[f[1]]
             c2 = args[0]
             c2 = make_divisible(min(c2, max_channels) * width, 8)
-            he = args[1] 
+            he = args[1]
             if scale in "n":
                 he = int(args[1] * 0.5)
             elif scale in "x":
@@ -1092,7 +1107,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args = [c1]
             if scale in "lx":  # for L/X sizes
                 args.append(False)
-                c2 =c1
+                c2 = c1
         elif m is FullPAD_Tunnel:
             c2 = ch[f[0]]
         else:

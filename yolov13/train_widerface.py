@@ -12,12 +12,12 @@ os.environ['OMP_NUM_THREADS'] = '16'
 MODEL = 'yolov13n.pt'  # nano版本，速度快
 DATA = 'ultralytics/cfg/datasets/wider_face.yaml'  # 数据集配置
 EPOCHS = 150  # 训练轮数
-BATCH_SIZE = 8
-IMG_SIZE = 1280  # 人脸检测推荐高分辨率
+BATCH_SIZE = 16
+IMG_SIZE = 640  # 人脸检测推荐高分辨率
 DEVICE = '0'
 WORKERS = 8  # 实测workers=8稳定，16可能导致不稳定
 PROJECT = 'runs/train'
-NAME = 'yolov13n_phase1_softnms'  # 优化阶段1
+NAME = 'yolov13n_base'  # 优化阶段1
 RESUME = False
 FP16 = True  # Ada架构完全支持FP16
 

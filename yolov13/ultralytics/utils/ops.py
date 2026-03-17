@@ -270,7 +270,7 @@ def non_max_suppression(
         max_wh=7680,
         in_place=True,
         rotated=False,
-        enabel_soft_nms: bool = True,  # ←优化阶段 1 新增
+        enabel_soft_nms: bool = False,  # ←优化阶段 1 新增
         soft_nms_sigma: float = 0.5,  # ←优化阶段 1 新增
 ):
     """
