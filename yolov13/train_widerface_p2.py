@@ -12,12 +12,12 @@ os.environ['OMP_NUM_THREADS'] = '16'
 # -------------------
 # 模型配置
 # -------------------
-PRETRAINED_WEIGHTS = 'runs/train/yolov13n_vgpu32g2/weights/best.pt'
+PRETRAINED_WEIGHTS = 'runs/train/yolov13n_base2/weights/best.pt'
 MODEL = 'ultralytics/cfg/models/v13/yolov13p2n.yaml'
 DATA = 'ultralytics/cfg/datasets/wider_face.yaml'
 EPOCHS = 100
 BATCH_SIZE = 8
-IMG_SIZE = 1280
+IMG_SIZE = 640
 DEVICE = '0'
 WORKERS = 8
 PROJECT = 'runs/train'
@@ -131,7 +131,7 @@ def train():
         save_period=10,  # 每10轮保存checkpoint
         val=True,  # 验证集评估
         plots=True,  # 生成训练曲线
-        patience=20,  # 20轮无提升则早停
+        patience=25,  # 25轮无提升则早停
         # 冻结backbone层，只让P2新增层先学习
         freeze=FREEZE_LAYERS if FREEZE_BACKBONE else None,
         **AUGMENT,  # 解包增强配置

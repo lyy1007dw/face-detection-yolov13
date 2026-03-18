@@ -5,11 +5,11 @@ from tqdm import tqdm
 from ultralytics import YOLO
 
 
-WEIGHTS = 'runs/train/yolov13n_phase2_p2/weights/best.pt'
+WEIGHTS = 'runs/train/yolov13n_phase2_p2_7/weights/best.pt'
 DATASET_FOLDER = '../dataset/wider_val/images/'
 SAVE_FOLDER = 'widerface_evaluate/yolov13n_phase2_p2/pred_txt/'
 GT_FOLDER = 'widerface_evaluate/ground_truth'
-IMG_SIZE = 1280
+IMG_SIZE = 640
 CONF_THRES = 0.001
 IOU_THRES = 0.5
 DEVICE = '0'
