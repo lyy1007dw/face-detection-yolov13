@@ -1914,3 +1914,49 @@ class FullPAD_Tunnel(nn.Module):
     def forward(self, x):
         out = x[0] + self.gate * x[1]
         return out
+
+
+# ============================================================
+# YOLOv13-SFP 新增：SPDConv（Space-to-Depth Convolution）
+# 来源：SPD-Conv: Speed and Precision Deficiency-Oriented Detection (2022)
+# 作用：无损下采样，保留小目标的空间细节信息
+# 替换位置：backbone 低层（P1→P2, P2→P3）的 stride=2 下采样
+# ============================================================
+class SPDConv(nn.Module):
+    """
+    Space-to-Depth Convolution（无损下采样）
+
+    相比传统 stride=2 卷积（丢弃约75%像素），SPDConv 零信息损失：
+      Step1 (Space-to-Depth): [B,C,H,W] → [B,C×4,H/2,W/2]  空间折叠进通道
+      Step2 (stride=1 Conv):  [B,C×4,H/2,W/2] → [B,C_out,H/2,W/2]  整合通道
+
+    Args:
+        in_channels (int):  输入通道数
+        out_channels (int): 输出通道数
+        kernel_size (int):  卷积核大小，默认 3
+        stride (int):       下采样倍数，默认 2
+    """
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=2):
+        print(f"SPDConv init: in={in_channels}, out={out_channels}, k={kernel_size}, s={stride}")
+        super().__init__()
+        self.stride = stride
+        self.conv = Conv(
+            in_channels * stride * stride,   # 展开后通道数 = C × stride²
+            out_channels,
+            k=kernel_size,
+            s=1,                             # 关键：stride=1，无额外下采样
+            p=kernel_size // 2
+        )
+
+    def forward(self, x):
+        x = self._space_to_depth(x, self.stride)
+        return self.conv(x)
+
+    @staticmethod
+    def _space_to_depth(x, stride):
+        """将空间像素折叠到通道维度（无信息丢失）"""
+        B, C, H, W = x.shape
+        x = x.view(B, C, H // stride, stride, W // stride, stride)
+        x = x.permute(0, 1, 3, 5, 2, 4).contiguous()
+        x = x.view(B, C * stride * stride, H // stride, W // stride)
+        return x
