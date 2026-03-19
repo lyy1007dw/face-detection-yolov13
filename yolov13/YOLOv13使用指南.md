@@ -773,7 +773,7 @@ datasets/widerface/
 运行 `train_widerface.py` 开始训练：
 
 ```bash
-python train_widerface.py
+python exp1_train_yolov13n_baseline.py
 ```
 
 **参数配置**（可在脚本中修改）：
@@ -794,7 +794,7 @@ python train_widerface.py
 运行 `test_widerface.py` 进行推理并评估：
 
 ```bash
-python test_widerface.py --weights runs/train/yolov13n_widerface/weights/best.pt
+python exp1_test_yolov13n_baseline.py --weights runs/train/yolov13n_widerface/weights/best.pt
 ```
 
 **参数说明**：

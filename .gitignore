@@ -34,5 +34,5 @@ Thumbs.db
 /yolov13/优化文档/
 /yolov13/widerface_evaluate/yolov13n_vgpu32g2/
 /yolov13/widerface_evaluate/yolov13n_vgpu32g2_softnms/
-/yolov13/widerface_evaluate/yolov13n_base/
-/yolov13/widerface_evaluate/yolov13n_phase2_p2/
+/yolov13/widerface_evaluate/exp1_yolov13n_baseline/
+/yolov13/widerface_evaluate/exp2_yolov13n_p2/

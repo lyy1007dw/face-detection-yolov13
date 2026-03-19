@@ -97,7 +97,7 @@ if __name__ == "__main__":
         print("加载 pt 失败，尝试使用 YOLO API")
         try:
             from ultralytics import YOLO
-            model = YOLO('ultralytics/cfg/models/v13/yolov13p2.yaml').model
+            model = YOLO('ultralytics/cfg/models/v13/exp2_yolov13_p2.yaml').model
         except:
             print("无法加载模型")
             sys.exit(1)

@@ -12,8 +12,8 @@ os.environ['OMP_NUM_THREADS'] = '16'
 # -------------------
 # 模型配置
 # -------------------
-PRETRAINED_WEIGHTS = 'runs/train/yolov13n_base2/weights/best.pt'
-MODEL = 'ultralytics/cfg/models/v13/yolov13p2n.yaml'
+PRETRAINED_WEIGHTS = 'runs/train/exp1_yolov13n_baseline/weights/best.pt'
+MODEL = 'ultralytics/cfg/models/v13/exp2_yolov13_p2.yaml'
 DATA = 'ultralytics/cfg/datasets/wider_face.yaml'
 EPOCHS = 100
 BATCH_SIZE = 8
@@ -21,7 +21,7 @@ IMG_SIZE = 640
 DEVICE = '0'
 WORKERS = 8
 PROJECT = 'runs/train'
-NAME = 'yolov13n_phase2_p2_'
+NAME = 'exp2_yolov13n_p2'
 RESUME = False
 FP16 = True
 

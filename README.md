@@ -103,13 +103,13 @@ names:
 
 ```bash
 cd yolov13
-python train_widerface.py
+python exp1_train_yolov13n_baseline.py
 ```
 
 或使用命令行参数自定义训练：
 
 ```bash
-python train_widerface.py \
+python exp1_train_yolov13n_baseline.py \
     --model yolov13n.pt \
     --data ultralytics/cfg/datasets/wider_face.yaml \
     --epochs 300 \
@@ -157,7 +157,7 @@ python -c "from ultralytics import YOLO; model = YOLO('runs/train/yolov13n_wider
 
 ```bash
 cd yolov13
-python test_widerface.py --weights runs/train/yolov13n_widerface/weights/best.pt
+python exp1_test_yolov13n_baseline.py --weights runs/train/yolov13n_widerface/weights/best.pt
 ```
 
 参数说明：
@@ -195,10 +195,10 @@ Hard   Val AP: 0.XXX
 ```bash
 # 1. 训练
 cd yolov13
-python train_widerface.py
+python exp1_train_yolov13n_baseline.py
 
 # 2. 生成预测结果
-python test_widerface.py --weights runs/train/yolov13n_widerface/weights/best.pt
+python exp1_test_yolov13n_baseline.py --weights runs/train/yolov13n_widerface/weights/best.pt
 
 # 3. 评估
 cd widerface_evaluate
